@@ -1,4 +1,5 @@
 # senti_trend
-English, Romanian, Russian (EN, RO, RU) sentiment and EN, RU trends extractor.
+English, Romanian, Russian, Spanish, Vietnamese (EN, RO, RU, ES, VI ) sentiment
+and EN, RU trends extractor.
 
  

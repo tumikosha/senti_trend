@@ -1,0 +1,12 @@
+LICENSE
+README.md
+pyproject.toml
+setup.cfg
+setup.py
+src/senti_trend/__init__.py
+src/senti_trend/senti_trend.py
+src/senti_trend/setup.py
+src/tumikosha.egg-info/PKG-INFO
+src/tumikosha.egg-info/SOURCES.txt
+src/tumikosha.egg-info/dependency_links.txt
+src/tumikosha.egg-info/top_level.txt
