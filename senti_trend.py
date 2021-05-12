@@ -98,7 +98,7 @@ texts_ru = [
 	"Все хорошо",
 	# "Цена ракетой подпрыгнет на луну"
 	" на Луну and go to the Moon"
-]
+] 
 
 if __name__ == '__main__':
 	# predictions = en_clf.predict(texts_en)
