@@ -2,6 +2,7 @@
 import time
 from src.senti_trend import senti_trend
 success, load_time = senti_trend.load_models(['ru', 'ro', 'en'])
+print(f"  Loaded in:  {load_time:0.4f} seconds")
 r = senti_trend.sentiment('Hello! We will rise it')
 print(r)
 
