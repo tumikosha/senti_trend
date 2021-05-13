@@ -9,7 +9,7 @@ src/PKL/es_sentiment_twitter.pkl
 src/PKL/ro_sentiment_review.pkl
 src/PKL/ru_sentiment_review.pkl
 src/PKL/ru_trend.pkl
-src/PKL/vi_sentiment.csv.pkl
+src/PKL/vi_sentiment_twitter.pkl
 src/senti_trend/__init__.py
 src/senti_trend/senti_trend.py
 src/senti_trend_tumikosha.egg-info/PKG-INFO

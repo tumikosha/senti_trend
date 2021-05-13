@@ -16,12 +16,9 @@ __status__ = "Production"
 
 import string
 import langdetect
-# from sklearn.externals import joblib
-import joblib
+import joblib  # from sklearn.externals import joblib
 import pickle
-import warnings
-import time
-import sys, os
+import warnings, time, sys, os, re
 
 # import fasttext
 
@@ -41,13 +38,28 @@ def uprint(*objects, sep=' ', end='', file=sys.stdout):
 		print(*map(f, objects), sep=sep, end=end, file=file)
 
 
+def split(delimiters: list, str: string, maxsplit: int = 0) -> list:
+	"""
+		Example: array: list = split(['.', '?', '!', '"', ";", "\n"], text_)
+		:param delimiters: ['.', '?', '!', '"', ";", "\n"]
+		:param str:
+		:param maxsplit:
+		:return: list of sentences
+		"""
+
+	regex_pattern = '|'.join(map(re.escape, delimiters))
+	res = re.split(regex_pattern, str, maxsplit)
+	res = [item for item in res if item.strip('\n\t ') != '']
+	return res
+
+
 def load_models(language_list: list) -> (bool, int):
 	"""	 Loading models into global dicts: models_4_sentiment, models_4_trend
 	:param language_list: list of languages ['en', 'ro', 'ru', ...]
 	:return: (success, time in seconds)
 	"""
 	global models_4_sentiment, models_4_trend
-	data_dir = os.path.join(os.path.dirname(__file__), 'tests', 'data')
+	# data_dir = os.path.join(os.path.dirname(__file__), 'tests', 'data')
 	print('', os.path.join(sys.prefix, 'PKL'))
 	path = os.path.join(sys.prefix, 'PKL')
 	print("[X] SENTI_TREND: loading sentiment/trend models from dir  '" + path + "/*' ... ", end="")
@@ -74,11 +86,11 @@ def load_models(language_list: list) -> (bool, int):
 		if 'es' in language_list:
 			num += 1
 			uprint('es, ')
-			models_4_sentiment['es'] = joblib.load(path + '/es_sentiment_review.pkl')
+			models_4_sentiment['es'] = joblib.load(path + '/es_sentiment_twitter.pkl')
 		if 'vi' in language_list:
 			num += 1
 			uprint('vi, ')
-			models_4_sentiment['vi'] = joblib.load(path + '/vi_sentiment_review.pkl')
+			models_4_sentiment['vi'] = joblib.load(path + '/vi_sentiment_twitter.pkl')
 
 		toc = time.perf_counter()
 		print(f"done with {toc - tic:0.2f} seconds")
@@ -90,7 +102,10 @@ def load_models(language_list: list) -> (bool, int):
 
 
 def detect_lang(text_: string) -> string:
-	""" return:  'ro' | 'ru' | 'en', etc.. """
+	"""
+	detect language of text
+	return:  'ro' | 'ru' | 'en', etc..
+	"""
 	# predictions = lang_model.predict([text_])
 	# ([[lang]], [arr]) = predictions
 	# lang = predictions
@@ -98,32 +113,77 @@ def detect_lang(text_: string) -> string:
 	return langdetect.detect(text_)
 
 
-def sentiment(text_: string) -> int:
-	""" return:  1 - positive |  0 - negative """
-	global models_4_sentiment, models_4_trend, autoload
-	lang = detect_lang(text_)
+def sentiment_bi(text_: string, lang=None) -> int:
+	""" return:  1 - positive |  -1 - negative """
+	global models_4_sentiment, models_4_trend, AUTOLOAD
+	if lang is None: lang = detect_lang(text_)
 	if (not lang in models_4_sentiment) and AUTOLOAD:
 		load_models([lang])
 	try:
 		predictions = models_4_sentiment[lang].predict([text_])
 	except:
-		raise Exception("No sentiment model for lang: " + lang)
+		raise Exception("No sentiment model for lang: " + lang + " " + text_[:20])
 	return predictions[0]
 
 
-def trend(text_: string) -> int:
-	""" return:  1 - UP | 0 - DOWN  """
+def trend_bi(text_: string, lang=None) -> int:
+	""" return:  1 - UP | -1 - DOWN  """
+	global models_4_sentiment, models_4_trend, AUTOLOAD
 	# lang = langdetect.detect(text_)
-	lang = detect_lang(text_)
+	if lang is None: lang = detect_lang(text_)
 	if (not lang in models_4_trend) and AUTOLOAD:
 		load_models([lang])
 	try:
 		predictions = models_4_trend[lang].predict([text_])
 	except Exception as e:
 		# raise Exception("No trend model for lang: " + lang) from e
-		raise RuntimeError("No trend model for lang: " + lang, e)
+		raise RuntimeError("No trend model for lang: " + lang + " " + text_[:20], e)
 
 	return predictions[0]
+
+
+def sentiment(text_: string, for_entity=None, lang=None):
+	"""
+	:param text_: text for splitting in sentences
+	:param for_entity: required entity for filtering
+	:param lang: 'ru' | 'en' | 'vi' etc...
+	:return: negative, positive
+	"""
+	if lang is None: lang = detect_lang(text_)
+	delimiters: list = ['.', '?', '!', '"', ";", "\n", "\t"]
+	array: list = split(delimiters, text_)
+	if for_entity is not None:  # filter lines without entity
+		array = [line for line in array if for_entity.lower() in line.lower()]
+	if array == []: return 0.0, 0.0
+	pos, neg = 0, 0
+	for sentence in array:
+		if sentiment_bi(sentence, lang=lang) == 1:
+			pos += 1
+		else:
+			neg += 1
+	return neg / (neg + pos), pos / (neg + pos)
+
+
+def trend(text_: string, for_entity=None, lang=None):
+	"""
+	:param text_: text for splitting in sentences
+	:param for_entity: required entity for filtering
+	:param lang: 'ru' | 'en' | 'vi' etc...
+	:return: negative, positive
+	"""
+	if lang is None: lang = detect_lang(text_)
+	delimiters: list = ['.', '?', '!', '"', ";", "\n", "\t"]
+	array: list = split(delimiters, text_)
+	if for_entity is not None:  # filter lines without entity
+		array = [line for line in array if for_entity.lower() in line.lower()]
+	if array == []: return 0.0, 0.0
+	pos, neg = 0, 0
+	for sentence in array:
+		if trend_bi(sentence, lang=lang) == 1:
+			pos += 1
+		else:
+			neg += 1
+	return neg / (neg + pos), pos / (neg + pos)
 
 
 texts_ro = [
@@ -153,21 +213,21 @@ if __name__ == '__main__':
 	success, load_time = load_models(['ru', 'ro', 'en'])
 	# print(success, load_time)
 
-	sentiment(texts_en[0])
-	sentiment(texts_ru[0])
+	sentiment_bi(texts_en[0])
+	sentiment_bi(texts_ru[0])
 
 	tic = time.perf_counter()
-	sentiment(texts_en[0])
+	sentiment_bi(texts_en[0])
 	toc = time.perf_counter()
 	print(f"  Sentiment calc from sentence takes:  {toc - tic:0.8f} seconds")
 
 	tic = time.perf_counter()
-	sentiment(texts_ru[0])
+	sentiment_bi(texts_ru[0])
 	toc = time.perf_counter()
 	print(f"  Sentiment calc from sentence takes:  {toc - tic:0.8f} seconds")
 
 	tic = time.perf_counter()
-	trend(texts_en[0])
+	trend_bi(texts_en[0])
 	toc = time.perf_counter()
 	print(f"  Trend calc from sentence  takes:  {toc - tic:0.8f} seconds")
 
@@ -177,7 +237,7 @@ if __name__ == '__main__':
 	toc = time.perf_counter()
 	print(f"  Language detection from sentence  takes:  {toc - tic:0.8f} seconds")
 
-	trend(texts_ro[0])
+	trend_bi(texts_ro[0])
 # for txt in texts_en:
 # 	print("sentiment: ", str(sentiment(txt)) + " trend: " + str(sentiment(txt)) + " #  " + txt)
 #
